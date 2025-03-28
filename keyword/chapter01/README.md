@@ -62,20 +62,20 @@
     
     - 일대일(1 to 1)
         
-        ![image.png](attachment:4093c9c3-9c6b-465b-8edd-a12065fa53c6:image.png)
+        ![alt text](1to1.png)
         
         - 1 to 1 단방향
         - 1 to 1 양방향
     - 일 대 다 (1 to N), 다 대 일 (N to 1)
         
-        ![image.png](attachment:331f8729-a88b-4224-8244-305b0b15ef9f:image.png)
+        ![alt text](1ton.png)
         
         - 1 to 0~N : 1개와 0개에서 N개까지 연결됨
         - 1 to 1~N : 1개와 1개에서 N개까지 연결됨
         - 1 to N : 1개와 N개까지 연결됨
     - 다 대 다(N to M)
         
-        ![](https://velog.velcdn.com/images/jin5eok5/post/b40d1336-0098-4e2b-97ba-20a18c066802/image.png)
+        ![alt text](ntom.png)
         
         - N to M
         - N to 1 [관계 테이블] 1 to M
@@ -110,11 +110,11 @@
             
             **제 1 정규화 적용 전**
             
-            ![image.png](attachment:bcec2420-d725-4099-8db0-6bc138721bb1:image.png)
+            ![alt text](table1.png)
             
             - **제 1 정규화 적용 후**
                 
-                ![image.png](attachment:d3f2f3cb-e6db-45ed-a081-97e84cc1a1a3:image.png)
+                ![alt text](table2.png)
                 
                 → 각 컬럼이 다중 값을 갖지 않는다!
                 
@@ -146,14 +146,14 @@
             
             **제 2 정규화 적용 전**
             
-            ![image.png](attachment:fb3404cf-5c11-42c0-bd62-de15932041c2:image.png)
+            ![alt text](table3.png)
             
             - **제 2 정규화 적용 후**
                 
                 
-                ![image.png](attachment:84d776eb-72f0-4bb9-93e3-0eeb13784793:image.png)
+                ![alt text](table4.png)
                 
-                ![image.png](attachment:d3158dbf-cdc4-4798-aca1-649e832abf92:image.png)
+                ![alt text](table5.png)
                 
                 → 소속학과에 종속되어 있던 학과장을 다른 테이블로 분리시킴으로써 부분 종속을 제거
                 
@@ -183,15 +183,15 @@
             
             **제 3 정규화 적용 전**
             
-            ![image.png](attachment:27a5ce4f-9369-478b-9b9e-ce937df1a125:image.png)
+            ![alt text](table6.png)
             
             → [course → department], [course → lecturer], [lecturer → department] 가 종속 관계에 있음
             
             - **제 3 정규화 적용 후**
                 
-                ![image.png](attachment:c9a53cc5-ca17-4674-a85f-aaa5c49c23ab:image.png)
+                ![alt text](table7.png)
                 
-                ![image.png](attachment:36d2fa51-a04e-48c2-8b79-c122f639886d:image.png)
+                ![alt text](table8.png)
                 
 - 반 정규화
     
