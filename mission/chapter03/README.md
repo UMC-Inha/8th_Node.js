@@ -27,12 +27,16 @@
 }
 ```
 
+***
+
 2. 마이페이지 조회 (GET)
 
 - Endpoint: GET /users/{userId}/mypage
 - Path Variable: userId
 - Request Header:
 - Authorization: {access_token}
+
+***
 
 3. 리뷰 작성 (POST)
 
@@ -48,6 +52,9 @@
 }
 ```
 
+***
+
+
 4. 미션 목록 조회 (GET)
 
 - Endpoint: GET /users/{userId}/missions
@@ -56,11 +63,15 @@
 - Authorization: {access_token}
 - Query String: 미션 상태 (진행중, 진행 완료)
 
+***
+
 5. 미션 성공 요청 (POST)
 
 - Endpoint: POST /missions/{missionId}/success
 - Path Variable: missionId
 - Request Header: Authorization: {access_token}
+
+***
 
 6. 회원 가입 (POST)
 - Endpoint: POST /users/login
