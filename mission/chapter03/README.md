@@ -8,6 +8,8 @@
 5. 미션 성공 요청 (POST)
 6. 회원 가입 (POST)
 
+***
+
 1. 홈 화면 조회 (GET)
 
 - Endpoint: GET /umc/users/{userId}/home
