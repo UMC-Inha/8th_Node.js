@@ -17,14 +17,6 @@
 - Request Header:
     - Authorization: {access_token}
     - Content-Type: application/json
-- Request Body:
-```
-{
-  "userId": "mindongil",
-  "points": 999999,
-  "missions": 7,
-  "totalMissions": 10
-}
 ```
 
 ***
@@ -60,6 +52,28 @@
 - Endpoint: GET /users/{userId}/missions
 - Path Variable: userId
 - Request Header:
+- Request Body:
+```
+{
+  "userId": "mindongil",
+  "missions": [
+    {
+      "missionId": 1,
+      "title": "가게이름",
+      "description": "12,000원 이상의 식사를 하세요!",
+      "points": 500,
+      "status": "성공",
+    },
+    {
+      "missionId": 2,
+      "title": "가게이름",
+      "description": "12,000원 이상의 식사를 하세요!",
+      "points": 500,
+      "status": "서ㅇ공,
+    }
+  ]
+}
+```
 - Authorization: {access_token}
 - Query String: 미션 상태 (진행중, 진행 완료)
 
