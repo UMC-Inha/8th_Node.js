@@ -3,6 +3,7 @@ SELECT
   m.description,
   m.point,
   ml.status,
+  s.id,
   s.name
 FROM MissionLog ml
 JOIN Mission m
@@ -32,28 +33,27 @@ SELECT
 FROM Mission m
 JOIN Shop s ON m.shop_id = s.id
 JOIN Region r ON s.region_id = r.id
+LEFT JOIN MissionLog ml ON m.id = ml.mission_id
+AND ml.user_id = 1
 WHERE r.id = 1
-AND 
-  m.id NOT IN (
-      SELECT mission_id
-      FROM MissionLog
-      WHERE user_id = 1
-      AND status = 'completed'
-  );
+  AND (
+    ml.id IS NULL
+    OR ml.status
+    NOT IN ('completed', 'in_progress')
+    )
+  AND (
+    m.due_date IS NULL
+    OR m.due_date >= CURRENT_TIMESTAMP
+    )
 ORDER BY m.created_at DESC
 LIMIT 10;
 
 -- 마이페이지 화면 쿼리
 SELECT 
-    ui.username,
-    ul.email,
-    ui.phone_number,
-    (SELECT SUM(m.point) 
-     FROM MissionLog ml 
-     JOIN Mission m
-     ON ml.mission_id = m.id 
-     WHERE ml.user_id = ui.id
-     AND ml.status = 'completed') AS total_points
+  ui.username,
+  ul.email,
+  ui.phone_number,
+  ui.point
 FROM UserInfo ui
 JOIN UserLogin ul ON ui.id = ul.id
 WHERE ui.id = 1;
