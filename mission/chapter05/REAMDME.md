@@ -7,267 +7,182 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ 5. 레포지토리 (user.repository.js) ← (SQL 실행)  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ 6. MySQL 풀 (db.config.js)
 
-## Service 코드 분석
+# review.controller.js 코드 분석
+```
+import { addReviewService } from "../services/review.service.js";
+export const handleAddReview = async (req, res) => {
+  const storeId = parseInt(req.params.storeId);
+
+  // userId, rating, content, images 전부 body에서 받기
+  const { userId, rating, content, images } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ message: "userId가 없습니다." });
+  }
+
+  try {
+    const review = await addReviewService({
+      storeId,
+      userId: parseInt(userId),
+      rating,
+      content,
+      images
+    });
+
+    return res.status(201).json(review);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+```
+- 컨트롤러이다. 클라이언트에서 요청을 받고 service에 넘기는 역할이다.
+- HTTP 요청을 받는다.(POST)
+- Body에 JSON형태의 리뷰 내용 데이터가 있을것이다.
+- 서비스 계층의 HTTP 응답을 반환한다.
+
+# review.service.js 분석
+```
+import { responseFromReview } from "../dto/review.dto.js";
+import {
+  getStoreById,
+  saveReview,
+  saveReviewImages,
+  getReviewById,
+  getReviewImagesByReviewId
+} from "../repositories/review.repository.js";
+
+export const addReviewService = async ({ storeId, userId, rating, content, images }) => {
+
+  const store = await getStoreById(storeId);
+  if (!store) {
+    throw new Error("존재하지 않는 가게입니다.");
+  }
+
+  const reviewId = await saveReview({ storeId, userId, rating, content });
+
+  let savedImages = [];
+  if (images && images.length > 0) {
+    for (const imageUrl of images) {
+      await saveReviewImages(reviewId, imageUrl);
+      savedImages.push(imageUrl);
+    }
+  }
+
+  const review = await getReviewById(reviewId);
+  const imageRecords = await getReviewImagesByReviewId(reviewId);
+
+  return responseFromReview({ review, images: imageRecords });
+};
+
+```
+- 비즈니스 로직담당 계층이다.
+- 컨트롤러에서 받은 데이터를 저장소로 보낸다.
+- DTO 변환을 통해 컨트롤러에 데이터를 반환
+- 예외 처리가 중요하다.
+
+# review.repository.js 분석
 ```
 import { pool } from "../db.config.js";
 
-// User 데이터 삽입
-export const addUser = async (data) => {
+export const getStoreById = async (storeId) => {
   const conn = await pool.getConnection();
-
   try {
-    const [confirm] = await pool.query(
-      `SELECT EXISTS(SELECT 1 FROM user WHERE email = ?) as isExistEmail;`,
-      data.email
+    const [store] = await pool.query(
+      `SELECT * FROM store WHERE id = ?;`,
+      storeId
     );
 
-    if (confirm[0].isExistEmail) {
+    if (store.length === 0) {
       return null;
     }
 
+    return store[0];
+  } catch (err) {
+    throw new Error(`가게 조회 중 오류 발생: ${err}`);
+  } finally {
+    conn.release();
+  }
+};
+
+export const saveReview = async ({ storeId, userId, rating, content }) => {
+  const conn = await pool.getConnection();
+  try {
     const [result] = await pool.query(
-      `INSERT INTO user (email, name, gender, birth, address, detail_address, phone_number) VALUES (?, ?, ?, ?, ?, ?, ?);`,
-      [
-        data.email,
-        data.name,
-        data.gender,
-        data.birth,
-        data.address,
-        data.detailAddress,
-        data.phoneNumber,
-      ]
+      `INSERT INTO review (store_id, user_id, rating, content, created_at) VALUES (?, ?, ?, ?, NOW());`,
+      [storeId, userId, rating, content]
     );
 
     return result.insertId;
   } catch (err) {
-    throw new Error(
-      `오류가 발생했어요. 요청 파라미터를 확인해주세요. (${err})`
-    );
+    throw new Error(`리뷰 추가 중 오류 발생: ${err}`);
   } finally {
     conn.release();
   }
 };
 
-// 사용자 정보 얻기
-export const getUser = async (userId) => {
+export const saveReviewImages = async (reviewId, imageUrl) => {
   const conn = await pool.getConnection();
-
-  try {
-    const [user] = await pool.query(`SELECT * FROM user WHERE id = ?;`, userId);
-
-    console.log(user);
-
-    if (user.length == 0) {
-      return null;
-    }
-
-    return user;
-  } catch (err) {
-    throw new Error(
-      `오류가 발생했어요. 요청 파라미터를 확인해주세요. (${err})`
-    );
-  } finally {
-    conn.release();
-  }
-};
-
-// 음식 선호 카테고리 매핑
-export const setPreference = async (userId, foodCategoryId) => {
-  const conn = await pool.getConnection();
-
   try {
     await pool.query(
-      `INSERT INTO user_favor_category (food_category_id, user_id) VALUES (?, ?);`,
-      [foodCategoryId, userId]
+      `INSERT INTO review_image (review_id, url) VALUES (?, ?);`,
+      [reviewId, imageUrl]
     );
-
     return;
   } catch (err) {
-    throw new Error(
-      `오류가 발생했어요. 요청 파라미터를 확인해주세요. (${err})`
-    );
+    throw new Error(`리뷰 이미지 추가 중 오류 발생: ${err}`);
   } finally {
     conn.release();
   }
 };
 
-// 사용자 선호 카테고리 반환
-export const getUserPreferencesByUserId = async (userId) => {
+export const getReviewById = async (reviewId) => {
   const conn = await pool.getConnection();
-
   try {
-    const [preferences] = await pool.query(
-      "SELECT ufc.id, ufc.food_category_id, ufc.user_id, fcl.name " +
-        "FROM user_favor_category ufc JOIN food_category fcl on ufc.food_category_id = fcl.id " +
-        "WHERE ufc.user_id = ? ORDER BY ufc.food_category_id ASC;",
-      userId
+    const [review] = await pool.query(
+      `SELECT * FROM review WHERE id = ?;`,
+      reviewId
     );
 
-    return preferences;
-  } catch (err) {
-    throw new Error(
-      `오류가 발생했어요. 요청 파라미터를 확인해주세요. (${err})`
-    );
-  } finally {
-    conn.release();
-  }
-};
-
-```
-
-userSignUp 함수는 회원가입이라는 하나의 큰 작업을 처리하는 서비스 계층 함수이다.  
-회원가입 로직은 다음 세 가지 단계로 나뉜다.
-
-1. 새로운 사용자(User)를 데이터베이스에 추가한다.
-2. 사용자가 선택한 선호(preference) 정보를 추가로 저장한다.
-3. 가입한 사용자 정보를 조회하고, 이를 가공하여 클라이언트에 반환한다.
-
-구체적인 흐름은 다음과 같다.
-
-- 먼저 addUser()를 호출하여 user 테이블에 새로운 사용자를 추가한다.  
-  삽입에 성공하면 새로 생성된 사용자의 id를 반환하고,  
-  만약 null이 반환되면 이미 존재하는 이메일이므로 에러를 발생시킨다.
-
-- 그 다음 사용자가 선택한 음식 카테고리 목록을 순회하면서,  
-  각 카테고리에 대해 setPreference()를 호출하여 user_favor_category 테이블에 매핑을 저장한다.
-
-- 마지막으로, 가입이 완료된 사용자의 정보를 getUser()로 조회하고,  
-  사용자의 선호 카테고리 정보를 getUserPreferencesByUserId()로 조회하여 가져온다.
-
-- 조회한 정보를 responseFromUser()를 통해 DTO(Data Transfer Object) 형태로 변환하여 최종적으로 반환한다.
-
-정리하면, userSignUp 함수는 데이터 삽입, 비즈니스 로직 처리, 데이터 가공까지 한 번에 담당하는 회원가입 전체 프로세스를 수행한다.
-
----
-
-## Repository 코드 분석
-```
-import { pool } from "../db.config.js";
-
-// User 데이터 삽입
-export const addUser = async (data) => {
-  const conn = await pool.getConnection();
-
-  try {
-    const [confirm] = await pool.query(
-      `SELECT EXISTS(SELECT 1 FROM user WHERE email = ?) as isExistEmail;`,
-      data.email
-    );
-
-    if (confirm[0].isExistEmail) {
+    if (review.length === 0) {
       return null;
     }
 
-    const [result] = await pool.query(
-      `INSERT INTO user (email, name, gender, birth, address, detail_address, phone_number) VALUES (?, ?, ?, ?, ?, ?, ?);`,
-      [
-        data.email,
-        data.name,
-        data.gender,
-        data.birth,
-        data.address,
-        data.detailAddress,
-        data.phoneNumber,
-      ]
-    );
-
-    return result.insertId;
+    return review[0];
   } catch (err) {
-    throw new Error(
-      `오류가 발생했어요. 요청 파라미터를 확인해주세요. (${err})`
-    );
+    throw new Error(`리뷰 조회 중 오류 발생: ${err}`);
   } finally {
     conn.release();
   }
 };
 
-// 사용자 정보 얻기
-export const getUser = async (userId) => {
+export const getReviewImagesByReviewId = async (reviewId) => {
   const conn = await pool.getConnection();
-
   try {
-    const [user] = await pool.query(`SELECT * FROM user WHERE id = ?;`, userId);
+    const [images] = await pool.query(
+      `SELECT * FROM review_image WHERE review_id = ?;`,
+      reviewId
+    );
 
-    console.log(user);
-
-    if (user.length == 0) {
-      return null;
-    }
-
-    return user;
+    return images;
   } catch (err) {
-    throw new Error(
-      `오류가 발생했어요. 요청 파라미터를 확인해주세요. (${err})`
-    );
-  } finally {
-    conn.release();
-  }
-};
-
-// 음식 선호 카테고리 매핑
-export const setPreference = async (userId, foodCategoryId) => {
-  const conn = await pool.getConnection();
-
-  try {
-    await pool.query(
-      `INSERT INTO user_favor_category (food_category_id, user_id) VALUES (?, ?);`,
-      [foodCategoryId, userId]
-    );
-
-    return;
-  } catch (err) {
-    throw new Error(
-      `오류가 발생했어요. 요청 파라미터를 확인해주세요. (${err})`
-    );
-  } finally {
-    conn.release();
-  }
-};
-
-// 사용자 선호 카테고리 반환
-export const getUserPreferencesByUserId = async (userId) => {
-  const conn = await pool.getConnection();
-
-  try {
-    const [preferences] = await pool.query(
-      "SELECT ufc.id, ufc.food_category_id, ufc.user_id, fcl.name " +
-        "FROM user_favor_category ufc JOIN food_category fcl on ufc.food_category_id = fcl.id " +
-        "WHERE ufc.user_id = ? ORDER BY ufc.food_category_id ASC;",
-      userId
-    );
-
-    return preferences;
-  } catch (err) {
-    throw new Error(
-      `오류가 발생했어요. 요청 파라미터를 확인해주세요. (${err})`
-    );
+    throw new Error(`리뷰 이미지 조회 중 오류 발생: ${err}`);
   } finally {
     conn.release();
   }
 };
 
 ```
-Repository 계층은 데이터베이스에 실제로 접근하여 SQL 쿼리를 수행하는 역할을 한다.  
-코드의 주요 목표는 데이터 조작(CRUD) 작업을 담당하고, 서비스 계층과 분리하여 코드 구조를 깔끔하게 유지하는 것이다.
-
-user.repository.js 파일에는 다음과 같은 네 가지 함수가 정의되어 있다.
-
-1. 사용자 추가 (addUser)  
-   - user 테이블에 새로운 사용자 레코드를 추가한다.  
-   - 삽입 전에 이메일 중복 여부를 확인하여 이미 존재하는 이메일이면 삽입을 막는다.
-
-2. 사용자 정보 조회 (getUser)  
-   - 사용자 id를 기반으로 user 테이블에서 사용자 정보를 조회한다.  
-   - 조회된 사용자 객체를 반환하며, 존재하지 않으면 null을 반환한다.
-
-3. 사용자 선호 카테고리 추가 (setPreference)  
-   - 특정 사용자와 음식 카테고리 간의 선호 관계를 user_favor_category 테이블에 저장한다.
-
-4. 사용자 선호 카테고리 조회 (getUserPreferencesByUserId)  
-   - user_favor_category 테이블과 food_category 테이블을 JOIN하여,  
-   - 사용자가 선택한 모든 음식 카테고리 정보를 조회하고 반환한다.
-
-각 함수는 데이터베이스 연결 풀(pool)에서 커넥션을 얻어온 후,  
-try-catch-finally 블록을 사용해 오류를 안전하게 처리하고, 작업이 끝난 후 연결을 반환한다.
-
-정리하면, Repository 계층은 직접 SQL 쿼리를 실행하여 데이터베이스와 상호작용하는 모든 책임을 지고 있으며, 서비스 계층은 이 함수를 호출해서 필요한 데이터를 얻거나 저장한다.
+### getStoreById : store 테이블에서 단일 행 조회
+- null 또는 id, name을 반환
+### saveReview
+- 리뷰를 INSERT하는 역할
+- 리뷰와 이미지를 함께 저장할 때 전체가 성공하거나 롤백되도록 트랜잭션 적용 고려
+### saveReviewImage
+- 리뷰 이미지 INSERT
+### getReviewById
+- 단일 리뷰 조회
+- getStoreById와 동일한 패턴
+### getReviewImagesByReviewId
+- 특정 리뷰의 이미지 목록 조회
